@@ -24,7 +24,8 @@ Full CVE list and which code patterns each affects: `references/cves.md`.
    ```
    Add `--json` for machine output. It inspects the running Node, `.nvmrc`, `.node-version`,
    `.tool-versions`, `package.json` (`engines`, `volta`), Dockerfiles, compose files, CI configs
-   (GitHub Actions, GitLab CI, CircleCI), and the `undici` version in npm, yarn and pnpm lockfiles.
+   (GitHub Actions, GitLab CI, CircleCI), Lambda and Firebase runtimes (serverless.yml/.ts, SAM,
+   Terraform, CDK, firebase.json), and the `undici` version in npm, yarn and pnpm lockfiles.
    It also scans source for code that touches the vulnerable APIs. It skips `node_modules`, build
    output, `.claude`, and every plain directory named in the root `.gitignore`.
 2. **Report** the findings to the user before changing anything: which files pin a vulnerable
@@ -37,7 +38,9 @@ Full CVE list and which code patterns each affects: `references/cves.md`.
    `node:22.10.0-alpine` becomes `node:22.23.4-alpine`). It never changes a major version on its own.
    For EOL majors, ask the user which supported line to move to (24.x LTS is the usual choice),
    then rerun with `--fix --target-major 24`. With `--target-major`, every pin moves to that line,
-   including pins already on a supported line, so the project ends up on one version. Show the user
+   including pins already on a supported line, so the project ends up on one version. Lambda and Firebase
+   runtimes pin only a major and move to `nodejs22.x` or `nodejs24.x` (26 is refused: no such runtime
+   exists); a runtime already on 22 or 24 is reported as platform-patched, nothing to edit. Show the user
    `git diff` afterwards.
 4. **Runtime upgrade.** The script cannot upgrade the Node installed on a machine. Tell the user
    the right command for their manager (`nvm install 24.22.1`, `fnm install 24.22.1`,

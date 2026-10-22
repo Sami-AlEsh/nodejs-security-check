@@ -11,6 +11,8 @@ Patched versions: **22.23.4**, **24.22.1**, **26.12.1**. Node 20 and older are e
 
 - **Version pins**: `.nvmrc`, `.node-version`, `.tool-versions`, `package.json` (`engines`, `volta`),
   Dockerfiles, compose files, GitHub Actions, GitLab CI and CircleCI configs
+- **Lambda and Firebase runtimes**: `runtime: nodejs20.x` in `serverless.yml` / `serverless.ts` / SAM / Terraform,
+  CDK `Runtime.NODEJS_20_X`, `firebase.json` — EOL majors move to `nodejs22.x` or `nodejs24.x` with `--target-major`
 - **undici installed from npm**: `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`
 - **Source code that touches the affected APIs**: Brotli decoding, `dns.resolve*`, TLS hostname checks,
   `rejectUnauthorized: false`, keep-alive agents, startup snapshots / SEA, the permission model

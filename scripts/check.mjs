@@ -157,8 +157,38 @@ for (const file of files) {
   }
 }
 
-// ---------- 3. undici in lockfiles (npm, yarn v1/berry, pnpm) ----------
 const LOCKS = new Set(['package-lock.json', 'npm-shrinkwrap.json', 'yarn.lock', 'pnpm-lock.yaml']);
+
+// ---------- 2b. Managed runtimes: Lambda (serverless.yml/.ts, SAM, CloudFormation, CDK, Terraform) and Firebase ----------
+// They pin a major only and the platform applies Node patches: a supported line is info, an EOL line still has to move.
+const LAMBDA_MAJORS = new Set([22, 24]);
+const RT_KEY = /(?:runtime|Runtime)['"]?\s*[:=]\s*['"]?nodejs(\d+)(?:\.x)?\b/;
+const RT_CDK = /Runtime\.NODEJS_(\d+)_X\b/;
+const MANAGED_SRC = /\.(ya?ml|json|tf|[cm]?[jt]s)$/i;
+function reportManaged(file, line, major, label, rewrite) {
+  const where = { file: rel(file), line, kind: 'lambda' };
+  const suffix = label === 'Firebase' ? '' : '.x';
+  const name = `nodejs${major}${suffix}`;
+  if (PATCHED[major]) { add({ ...where, severity: 'info', message: `${label} runtime ${name}: the platform applies Node patches; confirm the deployed runtime version includes ${PATCHED[major]}` }); return; }
+  if (!TARGET_MAJOR) { add({ ...where, severity: 'high', fixable: false, message: `${label} runtime ${name} is on an unsupported line with no fix; move to nodejs22${suffix} or nodejs24${suffix} (rerun with --fix --target-major 22)` }); return; }
+  if (!LAMBDA_MAJORS.has(TARGET_MAJOR)) { add({ ...where, severity: 'high', fixable: false, message: `${label} runtime ${name} is on an unsupported line; there is no nodejs${TARGET_MAJOR}${suffix} runtime, rerun with --target-major 22 or 24` }); return; }
+  const f = { ...where, severity: 'high', fixable: true, to: `nodejs${TARGET_MAJOR}${suffix}`, message: `${label} runtime ${name} is on an unsupported line; target is nodejs${TARGET_MAJOR}${suffix}` };
+  add(f);
+  if (FIX) f.fixed = rewrite(String(TARGET_MAJOR));
+}
+for (const file of files) {
+  const base = path.basename(file);
+  if (!MANAGED_SRC.test(base) || /\.d\.ts$/i.test(base) || LOCKS.has(base)) continue;
+  let text; try { if (fs.statSync(file).size > 1_000_000) continue; text = fs.readFileSync(file, 'utf8'); } catch { continue; }
+  if (!/nodejs\d|NODEJS_\d/.test(text)) continue;
+  const label = base === 'firebase.json' ? 'Firebase' : 'Lambda';
+  text.split('\n').forEach((l, i) => {
+    const re = RT_KEY.test(l) ? RT_KEY : RT_CDK.test(l) ? RT_CDK : null;
+    if (re) reportManaged(file, i + 1, Number(l.match(re)[1]), label, lineRewrite(file, i + 1, re));
+  });
+}
+
+// ---------- 3. undici in lockfiles (npm, yarn v1/berry, pnpm) ----------
 for (const file of files) {
   const base = path.basename(file);
   if (!LOCKS.has(base)) continue;
